@@ -1,27 +1,32 @@
 from math import comb
+from itertools import product
 
 
-def hypergeom_probability(
+def multivariate_hypergeom_probability(
     deck_size: int,
-    copies: int,
     hand_size: int,
-    min_cards: int,
-    max_cards: int,
+    requirements: list,  # list of {"copies": int, "min": int, "max": int}
 ):
-    probability = 0
+    total = 0
 
-    for k in range(min_cards, max_cards + 1):
+    # Generate all combinations of draw counts for each requirement
+    ranges = [range(req["min"], min(req["max"], req["copies"]) + 1) for req in requirements]
 
-        if k > copies:
+    for combo in product(*ranges):
+        cards_used = sum(combo)
+
+        # Remaining cards drawn from the rest of the deck
+        remaining_draw = hand_size - cards_used
+        remaining_deck = deck_size - sum(r["copies"] for r in requirements)
+
+        if remaining_draw < 0 or remaining_draw > remaining_deck:
             continue
 
-        if hand_size - k > deck_size - copies:
-            continue
+        numerator = 1
+        for k, req in zip(combo, requirements):
+            numerator *= comb(req["copies"], k)
 
-        probability += (
-            comb(copies, k)
-            * comb(deck_size - copies, hand_size - k)
-            / comb(deck_size, hand_size)
-        )
+        numerator *= comb(remaining_deck, remaining_draw)
+        total += numerator / comb(deck_size, hand_size)
 
-    return probability
+    return total

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from calculations import hypergeom_probability
+from calculations import multivariate_hypergeom_probability
 from models import DeckInput
 
 app = FastAPI()
@@ -19,32 +19,22 @@ app.add_middleware(
 @app.post("/analyze")
 def analyze(deck: DeckInput):
 
-    first_results = []
-    second_results = []
+    reqs = [
+        {"copies": r.copies, "min": r.min, "max": r.max}
+        for r in deck.requirements
+    ]
 
-    for requirement in deck.requirements:
+    opening_first = multivariate_hypergeom_probability(
+        deck_size=deck.deck_size,
+        hand_size=deck.hand_size,
+        requirements=reqs,
+    )
 
-        first_probability = hypergeom_probability(
-            deck_size=deck.deck_size,
-            copies=requirement.copies,
-            hand_size=deck.hand_size,
-            min_cards=requirement.min,
-            max_cards=requirement.max,
-        )
-
-        second_probability = hypergeom_probability(
-            deck_size=deck.deck_size,
-            copies=requirement.copies,
-            hand_size=deck.hand_size + 1,
-            min_cards=requirement.min,
-            max_cards=requirement.max,
-        )
-
-        first_results.append(first_probability)
-        second_results.append(second_probability)
-
-    opening_first = min(first_results)
-    opening_second = min(second_results)
+    opening_second = multivariate_hypergeom_probability(
+        deck_size=deck.deck_size,
+        hand_size=deck.hand_size + 1,
+        requirements=reqs,
+    )
 
     return {
         "going_first": round(opening_first * 100, 2),
